@@ -1,7 +1,8 @@
+import 'dart:collection';
+import 'package:flutter/material.dart';
 import 'package:Forge/utils/CustomDrawer.dart';
 import 'package:Forge/utils/Day.dart';
 import 'package:Forge/utils/AuthService.dart';
-import 'package:flutter/material.dart';
 import 'package:Forge/utils/Habit.dart';
 
 class HomePage extends StatefulWidget {
@@ -15,31 +16,35 @@ class _HomePageState extends State<HomePage> {
   DateTime now = DateTime.now();
   late Size size;
   late DateTime selectedDate;
-  List<Habit> habits = [];
-  List<Day> days = [];
+  List<Habit> globalHabitList = [];
+  Map<DateTime, Day> daysMap = HashMap();
   TextEditingController habitController = TextEditingController();
   final AuthService auth = AuthService();
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
-  Color selectedDateColor = Colors.white;
 
-  List<Day> getDaysInMonth() {
+  void initializeDaysInMonth() {
     final DateTime firstDayOfMonth = DateTime(now.year, now.month, 1);
     final DateTime lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
     final int daysBeforeMonth = firstDayOfMonth.weekday - 1;
 
     for (int i = -daysBeforeMonth; i < lastDayOfMonth.day; i++) {
       final DateTime date = DateTime(now.year, now.month, 1 + i);
-      days.add(Day(date));
+      daysMap[date] = Day(date);
     }
-    return days;
+  }
+
+  List<DateTime> getAllMonthDays() {
+    return daysMap.keys.toList()
+      ..sort((a, b) => a.compareTo(b))
+      ..removeWhere((date) => date.month != now.month);
   }
 
   Widget buildCalendarDay(DateTime date, Color color) {
     return Expanded(
       child: Container(
-        margin: EdgeInsets.all(4),
+        margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: selectedDateColor,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: color,
@@ -52,11 +57,27 @@ class _HomePageState extends State<HomePage> {
             date.day.toString(),
             style: TextStyle(
               color: Colors.black,
+              fontWeight: date == selectedDate ? FontWeight.bold : FontWeight.normal,
             ),
           ),
         ),
       ),
     );
+  }
+
+  void addHabit(String habitName) {
+    setState(() {
+      // Create new habit
+      Habit newHabit = Habit(habitName);
+      globalHabitList.add(newHabit);
+
+      // Add habit to all days in the month
+      daysMap.forEach((date, day) {
+        if (date.month == now.month) {
+          day.addHabit(newHabit);
+        }
+      });
+    });
   }
 
   void showAddHabitDialog() {
@@ -80,18 +101,18 @@ class _HomePageState extends State<HomePage> {
                     color: Colors.grey[800],
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 TextField(
                   controller: habitController,
                   decoration: InputDecoration(
                     hintText: 'Enter your habit',
-                    prefixIcon: Icon(Icons.edit),
+                    prefixIcon: const Icon(Icons.edit),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
                   ),
                 ),
-                SizedBox(height: 20),
+                const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -100,18 +121,16 @@ class _HomePageState extends State<HomePage> {
                         Navigator.pop(context);
                         habitController.clear();
                       },
-                      child: Text('Cancel'),
+                      child: const Text('Cancel'),
                     ),
                     ElevatedButton(
                       onPressed: () {
                         if (habitController.text.isNotEmpty) {
-                          setState(() {
-                            habits.add(Habit(habitController.text));
-                          });
+                          addHabit(habitController.text);
                           Navigator.pop(context);
                           habitController.clear();
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                               content: Text('Habit added successfully!'),
                               backgroundColor: Colors.lightGreen,
                             ),
@@ -124,7 +143,7 @@ class _HomePageState extends State<HomePage> {
                           borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: Text(
+                      child: const Text(
                         'Add',
                         style: TextStyle(color: Colors.white),
                       ),
@@ -139,21 +158,19 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void setDayHabit() {
-    
-  }
-
   @override
   void initState() {
     super.initState();
     selectedDate = now;
-    getDaysInMonth();
+    initializeDaysInMonth();
   }
 
   @override
   Widget build(BuildContext context) {
+    
     size = MediaQuery.of(context).size;
-    print(days[0].getDay().toString());
+    List<DateTime> monthDays = getAllMonthDays();
+
     return Scaffold(
       key: scaffoldKey,
       backgroundColor: Colors.grey[350],
@@ -162,9 +179,9 @@ class _HomePageState extends State<HomePage> {
         size: size,
       ),
       body: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
         child: Column(
           children: [
+            // Existing top app bar code remains the same
             Padding(
               padding: EdgeInsets.only(
                   top: size.height * 0.08,
@@ -205,7 +222,6 @@ class _HomePageState extends State<HomePage> {
               ),
               child: Column(
                 children: [
-                  SizedBox(height: size.width * 0.05),
                   Row(
                     children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                         .map((day) => Expanded(
@@ -221,27 +237,33 @@ class _HomePageState extends State<HomePage> {
                             ))
                         .toList(),
                   ),
-                  SizedBox(height: size.width * 0.05),
-                  for (int i = 0; i < days.length; i += 7)
+                  const SizedBox(height: 10),
+                  // Calendar Grid
+                  for (int i = 0; i < monthDays.length; i += 7)
                     Row(
-                      children: days
-                          .sublist(i, i + 7 > days.length ? days.length : i + 7)
-                          .map((date) =>
-                              buildCalendarDay(date.day, date.getColor()))
+                      children: monthDays
+                          .sublist(
+                              i, 
+                              i + 7 > monthDays.length ? monthDays.length : i + 7
+                          )
+                          .map((date) => buildCalendarDay(
+                              date, 
+                              daysMap[date]?.getColor() ?? Colors.grey
+                          ))
                           .toList()
                         ..addAll(List.generate(
-                          i + 7 > days.length ? i + 7 - days.length : 0,
-                          (_) => Expanded(child: Container()),
+                          i + 7 > monthDays.length ? 7 - (monthDays.length - i) : 0,
+                          (_) => const Expanded(child: SizedBox()),
                         )),
                     ),
                 ],
               ),
             ),
-            SizedBox(height: size.width * 0.05),
+            // Habits List (existing code)
             Container(
               height: size.height * 0.3,
-              margin: EdgeInsets.symmetric(horizontal: 16),
-              padding: EdgeInsets.all(16),
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.lightGreen[200],
                 borderRadius: BorderRadius.circular(20),
@@ -257,9 +279,9 @@ class _HomePageState extends State<HomePage> {
                       color: Colors.grey[800],
                     ),
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Expanded(
-                    child: habits.isEmpty
+                    child: globalHabitList.isEmpty
                         ? Center(
                             child: Text(
                               'No habits added yet',
@@ -267,11 +289,11 @@ class _HomePageState extends State<HomePage> {
                             ),
                           )
                         : ListView.builder(
-                            itemCount: habits.length,
+                            itemCount: globalHabitList.length,
                             itemBuilder: (context, index) {
                               return Container(
-                                margin: EdgeInsets.only(bottom: 8),
-                                padding: EdgeInsets.all(12),
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(15),
@@ -281,15 +303,21 @@ class _HomePageState extends State<HomePage> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Checkbox(
-                                        value: habits[index].isDone,
+                                        value: globalHabitList[index].isDone,
                                         onChanged: (bool? value) {
                                           setState(() {
-                                            habits[index].toggleDone();
+                                            globalHabitList[index].toggleDone();                                            
+                                            // Update habit state in all days
+                                            daysMap.forEach((date, day) {
+                                              if (date.month == now.month) {
+                                                day.updateHabitState(globalHabitList[index]);
+                                              }
+                                            });
                                           });
                                         }),
                                     Expanded(
                                       child: Text(
-                                        habits[index].getHabit(),
+                                        globalHabitList[index].getHabit(),
                                         style: TextStyle(
                                           fontSize: 16,
                                           color: Colors.grey[800],
@@ -298,10 +326,10 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                     IconButton(
                                       icon:
-                                          Icon(Icons.delete, color: Colors.red),
+                                          const Icon(Icons.delete, color: Colors.red),
                                       onPressed: () {
                                         setState(() {
-                                          habits.removeAt(index);
+                                          globalHabitList.removeAt(index);
                                         });
                                       },
                                     ),

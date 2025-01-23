@@ -1,5 +1,5 @@
 class Habit {
-  String? habit;
+  String habit;
   bool isDone;
 
   Habit(this.habit) : isDone = false;
@@ -9,5 +9,14 @@ class Habit {
   }
 
   bool getIsDone() => isDone;
-  String getHabit() => habit!;
+  String getHabit() => habit;
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Habit && other.habit == habit;
+  }
+
+  @override
+  int get hashCode => habit.hashCode;
 }
