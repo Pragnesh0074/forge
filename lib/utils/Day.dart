@@ -16,6 +16,10 @@ class Day {
     }
   }
 
+  void setHabits(List<Habit> habits) => this.habits = habits;
+
+  DateTime getDay() => day;
+
   Color getColor() {
     int shade = 300;
     if (habits.isEmpty) {

@@ -16,27 +16,20 @@ class _HomePageState extends State<HomePage> {
   late Size size;
   late DateTime selectedDate;
   List<Habit> habits = [];
+  List<Day> days = [];
   TextEditingController habitController = TextEditingController();
   final AuthService auth = AuthService();
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
-
-  @override
-  void initState() {
-    super.initState();
-    selectedDate = now;
-  }
+  Color selectedDateColor = Colors.white;
 
   List<Day> getDaysInMonth() {
     final DateTime firstDayOfMonth = DateTime(now.year, now.month, 1);
     final DateTime lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
-
     final int daysBeforeMonth = firstDayOfMonth.weekday - 1;
-    final List<Day> days = [];
 
     for (int i = -daysBeforeMonth; i < lastDayOfMonth.day; i++) {
       final DateTime date = DateTime(now.year, now.month, 1 + i);
       days.add(Day(date));
-      // days.add(DateTime(now.year, now.month, 1 + i));
     }
     return days;
   }
@@ -46,7 +39,7 @@ class _HomePageState extends State<HomePage> {
       child: Container(
         margin: EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: selectedDateColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: color,
@@ -146,10 +139,21 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  void setDayHabit() {
+    
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    selectedDate = now;
+    getDaysInMonth();
+  }
+
   @override
   Widget build(BuildContext context) {
     size = MediaQuery.of(context).size;
-    final days = getDaysInMonth();
+    print(days[0].getDay().toString());
     return Scaffold(
       key: scaffoldKey,
       backgroundColor: Colors.grey[350],
